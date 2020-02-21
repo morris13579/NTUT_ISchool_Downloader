@@ -12,8 +12,6 @@ from PrettyPrint import *
 from MyEncrypt import *
 from ProgressBar import *
 
-define_verify = False
-
 dirname = "北科i學園資料"
 #-------------------------創建資料夾-------------------------#
 try:
@@ -74,7 +72,7 @@ print("登入IShool Plus系統")
 
 url = "https://istudy.ntut.edu.tw/mooc/login.php"
 #取得登入資料
-title = res.get(url,verify = define_verify)
+title = res.get(url)
 soup = BeautifulSoup(title.text, 'html.parser')
 
 form = soup.find_all('form')
@@ -106,14 +104,14 @@ post_data = {
 		"password1"   : "cm9iZXJ0MTM1Nzk=" ,  
 	}
 
-result = res.post(url , data = post_data ,verify = define_verify )
+result = res.post(url , data = post_data )
 
 print("登入成功")
 
 #-------------------------取得課程名稱-------------------------#
 url = "https://istudy.ntut.edu.tw/learn/mooc_sysbar.php"
 
-result = res.get(url,verify = define_verify)
+result = res.get(url)
 
 soup = BeautifulSoup(result.text, 'html.parser')
 soup = soup.find( id = "selcourse" );
@@ -129,6 +127,8 @@ for index,s in enumerate(soup):
 os.system("cls") # windows
 
 #-------------------------顯示課程名稱-------------------------#
+
+course_name_list.reverse()
 
 last_year = 0
 count = 0
@@ -302,7 +302,7 @@ for index,file_item in enumerate(file_list):
 	for char in error_file_char: #去除檔名違法字元
 		filename = filename.replace(char," ")
 	
-	with closing(res.get(file_url, verify = define_verify , stream=True)) as response:
+	with closing(res.get(file_url, stream=True)) as response:
 		file_net_name = response.headers['Content-Disposition']
 		re_sreach= r"('|\")(?P<name>.+)('|\")"
 		file_net_name = re.search(re_sreach, file_net_name ).groupdict()['name']
