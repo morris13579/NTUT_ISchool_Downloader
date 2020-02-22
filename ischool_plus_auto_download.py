@@ -95,13 +95,16 @@ encrypt_pwd = encrypt_pwd.decode("utf-8")
 
 url = "https://istudy.ntut.edu.tw/login.php";
 
+encodedBytes = base64.b64encode(inputpassword.encode("utf-8"))
+password1 = str(encodedBytes, "utf-8")
+
 post_data = {
 		"reurl"        : ""     ,
 		"login_key"   : login_key ,    
 		"encrypt_pwd"   : encrypt_pwd ,  
 		"username"   : inputuserid ,  
 		"password"   : len(inputpassword) * '*' ,  
-		"password1"   : "cm9iZXJ0MTM1Nzk=" ,  
+		"password1"   : password1 ,  
 	}
 
 result = res.post(url , data = post_data )
