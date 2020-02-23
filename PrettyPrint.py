@@ -45,6 +45,7 @@ def str_count(s):
 		
 def get_display(showlen , name ):
 	name = strQ2B(name)
+	name = name [ :showlen] #限制顯示長度
 	name_info = str_count(name)
 	name_len = name_info.zh * 2 +  (len(name) - name_info.zh)
 	spacenum = showlen - name_len

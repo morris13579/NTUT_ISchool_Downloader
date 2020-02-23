@@ -226,10 +226,13 @@ result = res.get(url)
 
 soup = BeautifulSoup(result.text, 'lxml')
 items = soup.find_all( "item" )
-resources = soup.find_all( "resource" )
 
 file_list = []
-for item,resource in zip(items,resources):
+for item in items:
+	iref = item.get("identifierref");
+	if iref == None : 
+		continue
+	resource = soup.find( "resource" , attrs={"identifier": iref } )
 	file = {}
 	base = resource.get("xml:base")
 	file['href'] = (base if base != None else '') + '@' + resource.get("href")
@@ -258,7 +261,7 @@ if input_index != '':
 os.system("cls") # windows
 
 
-error_file_char = [ "/" , "|" ,'\\',"?",'"' ,'*' ,":" ,"<" ,">" ,"." , \
+error_file_char = [ "/" , "|" ,'\\',"?",'"' ,'*' ,":" ,"<" ,">" , \
 					"/" , "："]
 file_extension = str()
 file_url       = str()
@@ -285,36 +288,63 @@ for index,file_item in enumerate(file_list):
 			url = rsp.url.replace("download_preview" , "download")
 			break
 	else:
-		try:
-			re_sreach= r"\"(?P<url>/.+)\""
-			file_url = re.search(re_sreach, result.text).groupdict()['url']
-			url = "https://istudy.ntut.edu.tw" + file_url;
-		except AttributeError:  #可能是PDF預覽
-			re_sreach= r"\"(?P<url>.+)\""
-			file_url = re.search(re_sreach, result.text).groupdict()['url']
-			url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;
-			result = res.get( url );
-			re_sreach= r"DEFAULT_URL.+'(?P<url>.+)'"
-			file_url = re.search(re_sreach, result.text).groupdict()['url']
-			url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;
+		re_sreach = r"\"(?P<url>https?:\/\/[\w|\:|\/|\.|\+|\s|\?|%|#|&|=]+)\""  #檢測http或https開頭網址
+		re_result = re.search(re_sreach, result.text)
+		if re_result != None:
+			file_url = re_result.groupdict()['url']
+			print( "\n" + filename + "\n這是連結  " + file_url , end = "\n\n")
+			continue
+		else:
+			re_sreach= r"\"(?P<url>\/.+)\""  #檢測/ 開頭網址
+			re_result = re.search(re_sreach, result.text)
+			if re_result != None:
+				file_url = re_result.groupdict()['url']
+				url = "https://istudy.ntut.edu.tw" + file_url;
+			else:
+				re_sreach= r"\"(?P<url>.+)\""
+				file_url = re.search(re_sreach, result.text).groupdict()['url']
+				url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;   #是PDF預覽畫面
+				result = res.get( url );
+				re_sreach= r"DEFAULT_URL.+'(?P<url>.+)'"  #取得真實連接
+				file_url = re.search(re_sreach, result.text).groupdict()['url']
+				url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;
 			
 	
 	file_url = url
 	#-------------------------處理下載檔名並開使下載-------------------------#
-
+	
 	for char in error_file_char: #去除檔名違法字元
 		filename = filename.replace(char," ")
 	
 	with closing(res.get(file_url, stream=True)) as response:
-		file_net_name = response.headers['Content-Disposition']
-		re_sreach= r"('|\")(?P<name>.+)('|\")"
-		file_net_name = re.search(re_sreach, file_net_name ).groupdict()['name']
-		file_extension = file_net_name.split('.')[-1]
+	
+		#取得下載檔名
+		if '.' not in filename:  #代表沒有原始檔名已經有副檔名
+			if response.headers.__contains__('content-disposition'):  #檢查網路是否有檔名
+				file_net_name = response.headers['content-disposition']
+				re_sreach= r"('|\")(?P<name>.+)('|\")"
+				file_net_name = re.search(re_sreach, file_net_name ).groupdict()['name']
+			elif response.headers.__contains__('content-type'): #檢查文件屬性
+				content_type = response.headers['content-type']
+				if "pdf" in content_type: 
+					file_net_name = ".pdf"
+			elif '.' in file_url.split("/")[-1]:  #最後方式 從下載連結最後面取的
+				print( file_url )
+				file_net_name = file_url.split("/")[-1]
+			
+			if file_net_name == None:#所有方式都失敗了 直接當成pdf
+				print ( "無法找出檔案副檔名直接當成PDF")
+				file_net_name = ".pdf"
+			file_extension = file_net_name.split('.')[-1]
+			filename = filename + "." + file_extension
+		
+		
+		#處理下載大小進度條
 		if response.headers.__contains__('content-length'):
 			file_size = response.headers['content-length']  
 		else:
 			file_size = 0;
-		filename = filename + "." + file_extension
+		
 		
 		if filename in exist_file:
 			display = get_display( 80 , filename)
@@ -325,7 +355,7 @@ for index,file_item in enumerate(file_list):
 		
 		repeat_file_name = filename
 		time = 1
-		while repeat_file_name in new_exist_file:
+		while repeat_file_name in new_exist_file:  #解決命名重複
 			repeat_file_name = filename.split('.')[0] + '_' + str(time) + '.' + filename.split('.')[1]
 		filename = repeat_file_name
 		
@@ -338,8 +368,8 @@ for index,file_item in enumerate(file_list):
 			for data in response.iter_content(chunk_size=chunk_size):
 				file.write(data)
 				progress.refresh(count=len(data))
-		progress.endPrint()
 		file.close()
+		progress.endPrint()
 
 
 
