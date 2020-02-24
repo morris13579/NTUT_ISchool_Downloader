@@ -68,6 +68,54 @@ res.headers = user_header   #放入自定義header
 
 
 #-------------------------登入-------------------------#
+
+print("登入校園入口網站...")
+post_data = {
+		"muid"        : inputuserid     ,
+		"mpassword"   : inputpassword   
+	}
+
+url     = "https://nportal.ntut.edu.tw/login.do"  #登入網址
+
+login = res.post(url , data = post_data )
+
+if "myPortal.do" in login.text:
+	loginpass = True
+	url_start = login.text.find('"')
+	url_start += 1
+	url_end   = login.text.find('"' , url_start)
+	url_jump = login.text[url_start:url_end]
+	print ("登入成功")
+	
+elif "帳號或密碼錯誤" in login.text:
+	input ("帳號或密碼錯誤")
+	exit()
+else:
+	login_fail_time += 1;
+	input ("失敗{0}次嘗試重新登入" .format(login_fail_time) )
+	exit()
+
+print("登入IShool Plus系統")
+url = "https://nportal.ntut.edu.tw/ssoIndex.do?apUrl=https://istudy.ntut.edu.tw/login.php&apOu=ischool_plus_&sso=true&datetime1=1582549002044"
+result = res.get(url)
+soup = BeautifulSoup(result.text, 'html.parser')
+url = str()
+
+post_data = {}
+
+getsessionId = soup.find_all('form')
+for item in getsessionId:
+	if item.get("name") == "ssoForm":
+		url = item.get("action")  #取得跳轉網址
+		break
+
+getsessionId = soup.find_all('input')
+for item in getsessionId:
+	post_data[item.get("name")] = item.get("value")
+
+result = res.post(url  , data = post_data )
+
+'''
 print("登入IShool Plus系統")
 
 url = "https://istudy.ntut.edu.tw/mooc/login.php"
@@ -108,7 +156,7 @@ post_data = {
 	}
 
 result = res.post(url , data = post_data )
-
+'''
 print("登入成功")
 
 #-------------------------取得課程名稱-------------------------#
@@ -131,7 +179,7 @@ os.system("cls") # windows
 
 #-------------------------顯示課程名稱-------------------------#
 
-course_name_list.reverse()
+#course_name_list.reverse()
 
 last_year = 0
 count = 0
@@ -320,6 +368,7 @@ for index,file_item in enumerate(file_list):
 	
 		#取得下載檔名
 		if '.' not in filename:  #代表沒有原始檔名已經有副檔名
+			file_net_name = str()
 			if response.headers.__contains__('content-disposition'):  #檢查網路是否有檔名
 				file_net_name = response.headers['content-disposition']
 				re_sreach= r"('|\")(?P<name>.+)('|\")"
@@ -332,8 +381,8 @@ for index,file_item in enumerate(file_list):
 				print( file_url )
 				file_net_name = file_url.split("/")[-1]
 			
-			if file_net_name == None:#所有方式都失敗了 直接當成pdf
-				print ( "無法找出檔案副檔名直接當成PDF")
+			if file_net_name == '':#所有方式都失敗了 直接當成pdf
+				print ( "無法找出檔案副檔名直接當成PDF儲存，可能檔案已毀損")
 				file_net_name = ".pdf"
 			file_extension = file_net_name.split('.')[-1]
 			filename = filename + "." + file_extension
