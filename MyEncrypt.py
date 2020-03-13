@@ -2,7 +2,7 @@ import base64
 import pyDes
 from binascii import b2a_hex, a2b_hex
 from Cryptodome.Cipher import AES
-
+#pip install pycryptodomex
 
 AES_LENGTH = 16
 
