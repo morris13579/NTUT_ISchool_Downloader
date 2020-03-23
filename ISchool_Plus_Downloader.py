@@ -329,33 +329,39 @@ for index,file_item in enumerate(file_list):
 	url = "https://istudy.ntut.edu.tw/learn/path/SCORM_fetchResource.php"
 
 	result = res.post(url , data = download_data , allow_redirects=False)
-
+	
 	if result.is_redirect:  #發生需要重新導向 代表出現檔案預覽畫面
 		rsps = res.resolve_redirects(result, result.request)
 		for rsp in rsps:
 			url = rsp.url.replace("download_preview" , "download")
 			break
 	else:
-		re_sreach = r"\"(?P<url>https?:\/\/[\w|\:|\/|\.|\+|\s|\?|%|#|&|=]+)\""  #檢測http或https開頭網址
-		re_result = re.search(re_sreach, result.text)
-		if re_result != None:
-			file_url = re_result.groupdict()['url']
-			print( "\n" + filename + "\n這是連結  " + file_url , end = "\n\n")
-			continue
-		else:
-			re_sreach= r"\"(?P<url>\/.+)\""  #檢測/ 開頭網址
+		try:
+			re_sreach = r"\"(?P<url>https?:\/\/[\w|\:|\/|\.|\+|\s|\?|%|#|&|=]+)\""  #檢測http或https開頭網址
 			re_result = re.search(re_sreach, result.text)
 			if re_result != None:
 				file_url = re_result.groupdict()['url']
-				url = "https://istudy.ntut.edu.tw" + file_url;
+				print( "\n" + filename + "\n這是連結  " + file_url , end = "\n\n")
+				continue
 			else:
-				re_sreach= r"\"(?P<url>.+)\""
-				file_url = re.search(re_sreach, result.text).groupdict()['url']
-				url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;   #是PDF預覽畫面
-				result = res.get( url );
-				re_sreach= r"DEFAULT_URL.+'(?P<url>.+)'"  #取得真實連接
-				file_url = re.search(re_sreach, result.text).groupdict()['url']
-				url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;
+				re_sreach= r"\"(?P<url>\/.+)\""  #檢測/ 開頭網址
+				re_result = re.search(re_sreach, result.text)
+				if re_result != None:
+					file_url = re_result.groupdict()['url']
+					url = "https://istudy.ntut.edu.tw" + file_url;
+				else:
+					re_sreach= r"\"(?P<url>.+)\""
+					file_url = re.search(re_sreach, result.text).groupdict()['url']
+					url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;   #是PDF預覽畫面
+					result = res.get( url );
+					re_sreach= r"DEFAULT_URL.+'(?P<url>.+)'"  #取得真實連接
+					file_url = re.search(re_sreach, result.text).groupdict()['url']
+					url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;
+		except:
+			print(filename , "無法下載")
+			continue
+			
+			
 			
 	
 	file_url = url
