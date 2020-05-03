@@ -11,7 +11,7 @@ import hashlib
 from PrettyPrint import *
 from MyEncrypt import *
 from ProgressBar import *
-
+import urllib.parse
 dirname = "北科i學園資料"
 #-------------------------創建資料夾-------------------------#
 try:
@@ -285,7 +285,7 @@ for item in items:
 	base = resource.get("xml:base")
 	file['href'] = (base if base != None else '') + '@' + resource.get("href")
 	file['name'] = item.text.split("\t")[0].replace("\n" , "")
-	if '[錄]' in file['name']:
+	if '[錄]' not in file['name']:
 		continue
 	file_list.append(file)
 
@@ -338,95 +338,32 @@ for index,file_item in enumerate(file_list):
 			url = rsp.url.replace("download_preview" , "download")
 			break
 	else:
-		try:
-			re_sreach = r"\"(?P<url>https?:\/\/[\w|\:|\/|\.|\+|\s|\?|%|#|&|=]+)\""  #檢測http或https開頭網址
-			re_result = re.search(re_sreach, result.text)
-			if re_result != None:
-				file_url = re_result.groupdict()['url']
-				print( "\n" + filename + "\n這是連結  " + file_url , end = "\n\n")
-				continue
-			else:
-				re_sreach= r"\"(?P<url>\/.+)\""  #檢測/ 開頭網址
-				re_result = re.search(re_sreach, result.text)
-				if re_result != None:
-					file_url = re_result.groupdict()['url']
-					url = "https://istudy.ntut.edu.tw" + file_url;
-				else:
-					re_sreach= r"\"(?P<url>.+)\""
-					file_url = re.search(re_sreach, result.text).groupdict()['url']
-					url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;   #是PDF預覽畫面
-					result = res.get( url );
-					re_sreach= r"DEFAULT_URL.+'(?P<url>.+)'"  #取得真實連接
-					file_url = re.search(re_sreach, result.text).groupdict()['url']
-					url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;
-		except:
-			print(filename , "無法下載")
-			continue
-			
-			
-			
-	
-	file_url = url
-	#-------------------------處理下載檔名並開使下載-------------------------#
-	
-	for char in error_file_char: #去除檔名違法字元
-		filename = filename.replace(char," ")
-	
-	with closing(res.get(file_url, stream=True)) as response:
-	
-		#取得下載檔名
-		if '.' not in filename:  #代表沒有原始檔名已經有副檔名
-			file_net_name = str()
-			if response.headers.__contains__('content-disposition'):  #檢查網路是否有檔名
-				file_net_name = response.headers['content-disposition']
-				re_sreach= r"('|\")(?P<name>.+)('|\")"
-				file_net_name = re.search(re_sreach, file_net_name ).groupdict()['name']
-			elif response.headers.__contains__('content-type'): #檢查文件屬性
-				content_type = response.headers['content-type']
-				if "pdf" in content_type: 
-					file_net_name = ".pdf"
-			elif '.' in file_url.split("/")[-1]:  #最後方式 從下載連結最後面取的
-				print( file_url )
-				file_net_name = file_url.split("/")[-1]
-			
-			if file_net_name == '':#所有方式都失敗了 直接當成pdf
-				print ( "無法找出檔案副檔名直接當成PDF儲存，可能檔案已毀損")
-				file_net_name = ".pdf"
-			file_extension = file_net_name.split('.')[-1]
-			filename = filename + "." + file_extension
+		re_sreach = r"\"(?P<url>https?:\/\/[\w|\:|\/|\.|\+|\s|\?|%|#|&|=|-]+)\""  #檢測http或https開頭網址
+		re_result = re.search(re_sreach, result.text)
+		if re_result != None:
+			file_url = re_result.groupdict()['url']
+			if 'istream.ntut.edu.tw' in file_url:
+				print( "\n" + filename , end = '\n')
+				query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(file_url).query))
+				result = res.get("https://istream.ntut.edu.tw/lecture/api/Search/recordingSearchByUUID?type=xml&uuid={}".format( query['vid'] ) )
+				soup = BeautifulSoup(result.text, 'lxml')
+				find_list = [ 'presenter_video' , 'presenter2_video' , 'presentation_video' ] 
+				for n in find_list:
+					name = soup.find( n )
+					if name != None:
+						if '.' not in name.text:
+							continue
+						print( '{}'.format(name.text ) )
+						#-------------------------等待用戶選擇-------------------------#
+						select = input('按Enter下載 or 輸入(Y/N)')
+						if 'n' in select.lower():
+							continue
+						else:
+							rtmpurl = "rtmp://istreaming.ntut.edu.tw/lecture/" + query['vid'] + "/" + name.text;
+							print(rtmpurl , end = "\n\n")
+							os.system('start cmd /c rtmpdump -r {} -o {}\{}_{}.flv'.format(rtmpurl,store_location,filename.replace(' ','_'),name.text.split('.')[0]) )
 		
-		
-		#處理下載大小進度條
-		if response.headers.__contains__('content-length'):
-			file_size = response.headers['content-length']  
-		else:
-			file_size = 0;
-		
-		
-		if filename in exist_file:
-			display = get_display( 80 , filename)
-			print("{:s} 已存在".format(display))
-			continue
-		
-		new_exist_file = os.listdir(store_location)
-		
-		repeat_file_name = filename
-		time = 1
-		while repeat_file_name in new_exist_file:  #解決命名重複
-			repeat_file_name = filename.split('.')[0] + '_' + str(time) + '.' + filename.split('.')[1]
-		filename = repeat_file_name
-		
-		
-		chunk_size = 1024 # 單次請求最大值
-		content_size = int(file_size) # 內容體總大小
-		progress = ProgressBar(filename, total=content_size,
-										 unit="KB", chunk_size=chunk_size, run_status="正在下載", fin_status="下載完成")
-		with open(store_location + "\\" + filename,'wb') as file:
-			for data in response.iter_content(chunk_size=chunk_size):
-				file.write(data)
-				progress.refresh(count=len(data))
-		file.close()
-		progress.endPrint()
+
 
 
 
