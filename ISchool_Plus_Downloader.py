@@ -331,7 +331,7 @@ for index,file_item in enumerate(file_list):
 	url = "https://istudy.ntut.edu.tw/learn/path/SCORM_fetchResource.php"
 
 	result = res.post(url , data = download_data , allow_redirects=False)
-	
+	referer_url = None
 	if result.is_redirect:  #發生需要重新導向 代表出現檔案預覽畫面
 		rsps = res.resolve_redirects(result, result.request)
 		for rsp in rsps:
@@ -355,25 +355,24 @@ for index,file_item in enumerate(file_list):
 					re_sreach= r"\"(?P<url>.+)\""
 					file_url = re.search(re_sreach, result.text).groupdict()['url']
 					url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;   #是PDF預覽畫面
+					referer_url = url
 					result = res.get( url );
-					re_sreach= r"DEFAULT_URL.+'(?P<url>.+)'"  #取得真實連接
+					re_sreach= r"DEFAULT_URL.+['|\"](?P<url>.+)['|\"]"  #取得真實連接
 					file_url = re.search(re_sreach, result.text).groupdict()['url']
 					url = "https://istudy.ntut.edu.tw/learn/path/" + file_url;
 		except:
 			print(filename , "無法下載")
 			continue
 			
-			
-			
 	
+	if referer_url == None:
+		referer_url = url
 	file_url = url
 	#-------------------------處理下載檔名並開使下載-------------------------#
 	
 	for char in error_file_char: #去除檔名違法字元
 		filename = filename.replace(char," ")
-	
-	with closing(res.get(file_url, stream=True)) as response:
-	
+	with closing(res.get(file_url, stream=True , headers = {"referer" : referer_url} )) as response:
 		#取得下載檔名
 		if '.' not in filename:  #代表沒有原始檔名已經有副檔名
 			file_net_name = str()

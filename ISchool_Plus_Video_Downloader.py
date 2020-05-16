@@ -355,7 +355,7 @@ for index,file_item in enumerate(file_list):
 							continue
 						print( '{}'.format(name.text ) )
 						#-------------------------等待用戶選擇-------------------------#
-						select = input('按Enter下載 or 輸入(Y/N)')
+						select = input('按Enter下載 or 輸入(Y/N):')
 						if 'n' in select.lower():
 							continue
 						else:
