@@ -14,5 +14,4 @@
 ## 環境安裝問題  
 1. requestment.bat裡面為需要用的的package  
 2. 使用python3.7  
-3. ISchool_Plus_Video_Downloader.exe 需要和 rtmpdump.exe 放在同一目錄才能執行  
 
