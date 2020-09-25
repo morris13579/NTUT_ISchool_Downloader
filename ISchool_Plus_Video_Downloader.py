@@ -115,48 +115,6 @@ for item in getsessionId:
 
 result = res.post(url  , data = post_data )
 
-'''
-print("登入IShool Plus系統")
-
-url = "https://istudy.ntut.edu.tw/mooc/login.php"
-#取得登入資料
-title = res.get(url)
-soup = BeautifulSoup(title.text, 'html.parser')
-
-form = soup.find_all('form')
-
-items = form[2].find_all("input")
-for item in items:
-	if item.get("name") == "login_key":
-		login_key = item.get("value")
-
-data = inputpassword
-md5 = hashlib.md5()
-md5.update(data.encode("utf-8"))
-md5key = md5.hexdigest()
-cypkey  = md5key[0:4] + login_key[0:4];
-
-
-
-encrypt_pwd = DesEncrypt(inputpassword, cypkey)
-encrypt_pwd = encrypt_pwd.decode("utf-8")
-
-url = "https://istudy.ntut.edu.tw/login.php";
-
-encodedBytes = base64.b64encode(inputpassword.encode("utf-8"))
-password1 = str(encodedBytes, "utf-8")
-
-post_data = {
-		"reurl"        : ""     ,
-		"login_key"   : login_key ,    
-		"encrypt_pwd"   : encrypt_pwd ,  
-		"username"   : inputuserid ,  
-		"password"   : len(inputpassword) * '*' ,  
-		"password1"   : password1 ,  
-	}
-
-result = res.post(url , data = post_data )
-'''
 print("登入成功")
 
 #-------------------------取得課程名稱-------------------------#
@@ -332,36 +290,45 @@ for index,file_item in enumerate(file_list):
 
 	result = res.post(url , data = download_data , allow_redirects=False)
 	
-	if result.is_redirect:  #發生需要重新導向 代表出現檔案預覽畫面
-		rsps = res.resolve_redirects(result, result.request)
-		for rsp in rsps:
-			url = rsp.url.replace("download_preview" , "download")
-			break
-	else:
-		re_sreach = r"\"(?P<url>https?:\/\/[\w|\:|\/|\.|\+|\s|\?|%|#|&|=|-]+)\""  #檢測http或https開頭網址
-		re_result = re.search(re_sreach, result.text)
-		if re_result != None:
-			file_url = re_result.groupdict()['url']
-			if 'istream.ntut.edu.tw' in file_url:
-				print( "\n" + filename , end = '\n')
-				query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(file_url).query))
-				result = res.get("https://istream.ntut.edu.tw/lecture/api/Search/recordingSearchByUUID?type=xml&uuid={}".format( query['vid'] ) )
-				soup = BeautifulSoup(result.text, 'lxml')
-				find_list = [ 'presenter_video' , 'presenter2_video' , 'presentation_video' ] 
-				for n in find_list:
-					name = soup.find( n )
-					if name != None:
-						if '.' not in name.text:
-							continue
-						print( '{}'.format(name.text ) )
-						#-------------------------等待用戶選擇-------------------------#
-						select = input('按Enter下載 or 輸入(Y/N):')
-						if 'n' in select.lower():
-							continue
-						else:
-							rtmpurl = "rtmp://istreaming.ntut.edu.tw/lecture/" + query['vid'] + "/" + name.text;
-							print(rtmpurl , end = "\n\n")
-							os.system('start cmd /c rtmpdump -r {} -o {}\{}_{}.flv'.format(rtmpurl,store_location,filename.replace(' ','_'),name.text.split('.')[0]) )
+	re_sreach = r"[\"|'](?P<url>https?:\/\/[\w|\:|\/|\.|\+|\s|\?|%|#|&|=|-]+)[\"|']"  #檢測http或https開頭網址
+	re_result = re.search(re_sreach, result.text)
+	if re_result != None:
+		file_url = re_result.groupdict()['url']
+		print(file_url)
+		if 'istream.ntut.edu.tw' in file_url:
+			print( "\n" + filename , end = '\n')
+			query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(file_url).query))
+			result = res.get(file_url)
+			soup = BeautifulSoup(result.text, 'html.parser')
+			sourse_list = soup.find_all("source")
+			for n in sourse_list:
+				name = n.get('id')
+				if name != None:
+					print( '{}'.format(name) )
+					savename = filename +  "_" + name + ".mp4"
+					#-------------------------等待用戶選擇-------------------------#
+					select = input('按Enter下載 or 輸入(Y/N):')
+					if 'n' in select.lower():
+						continue
+					else:
+						video_url = "https://istream.ntut.edu.tw/videoplayer/" + n.get('src')
+						print(video_url , end = "\n\n")
+						with closing(res.get(video_url, stream=True )) as response:
+							#處理下載大小進度條
+							if response.headers.__contains__('content-length'):
+								file_size = response.headers['content-length']  
+							else:
+								file_size = 0;
+							chunk_size = 1024 # 單次請求最大值
+							content_size = int(file_size) # 內容體總大小
+							progress = ProgressBar(savename, total=content_size,
+															 unit="KB", chunk_size=chunk_size, run_status="正在下載", fin_status="下載完成")
+							with open(store_location + "\\" + savename,'wb') as file:
+								for data in response.iter_content(chunk_size=chunk_size):
+									file.write(data)
+									progress.refresh(count=len(data))
+							file.close()
+							progress.endPrint()
 		
 
 
