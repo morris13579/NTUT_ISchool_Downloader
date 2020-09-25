@@ -7,8 +7,7 @@
 3. 程式執行檔非常小  
 
 ## 功能  
-1. 下載北科I學員檔案(ISchool_Downloader.exe)  
-2. 下載北科I_Plus學員檔案(ISchool_Plus_Downloader.exe)  
+2. 下載北科I_Plus學園檔案(ISchool_Plus_Downloader.exe)  
 3. 下載北科I_Plus上課錄影(ISchool_Plus_Video_Downloader.exe)  
 
 ## 環境安裝問題  
