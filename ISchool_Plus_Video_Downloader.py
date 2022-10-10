@@ -1,3 +1,6 @@
+from cmath import log
+from ftplib import ftpcp
+from tkinter import E
 from bs4 import BeautifulSoup
 from contextlib import closing
 import requests
@@ -11,7 +14,9 @@ import hashlib
 from PrettyPrint import *
 from MyEncrypt import *
 from ProgressBar import *
+from download import downloadMain #引入download.py
 import urllib.parse
+
 dirname = "北科i學園資料"
 #-------------------------創建資料夾-------------------------#
 try:
@@ -78,6 +83,7 @@ post_data = {
 url     = "https://nportal.ntut.edu.tw/login.do"  #登入網址
 
 login = res.post(url , data = post_data )
+url 
 
 if "myPortal.do" in login.text:
 	loginpass = True
@@ -85,15 +91,16 @@ if "myPortal.do" in login.text:
 	url_start += 1
 	url_end   = login.text.find('"' , url_start)
 	url_jump = login.text[url_start:url_end]
-	print ("登入成功")
+	print ("登入成功") 
 	
 elif "帳號或密碼錯誤" in login.text:
 	input ("帳號或密碼錯誤")
 	exit()
 else:
-	login_fail_time += 1;
-	input ("失敗{0}次嘗試重新登入" .format(login_fail_time) )
-	exit()
+	pass
+	# login_fail_time += 1
+	# input ("失敗{0}次嘗試重新登入" .format(login_fail_time) )
+	# exit()
 
 print("登入IShool Plus系統")
 url = "https://nportal.ntut.edu.tw/ssoIndex.do?apUrl=https://istudy.ntut.edu.tw/login.php&apOu=ischool_plus_&sso=true&datetime1=1582549002044"
@@ -123,7 +130,7 @@ url = "https://istudy.ntut.edu.tw/learn/mooc_sysbar.php"
 result = res.get(url)
 
 soup = BeautifulSoup(result.text, 'html.parser')
-soup = soup.find( id = "selcourse" );
+soup = soup.find( id = "selcourse" )
 soup = soup.find_all( "option" )[1:]
 
 course_name_list = []
@@ -273,7 +280,8 @@ error_file_char = [ "/" , "|" ,'\\',"?",'"' ,'*' ,":" ,"<" ,">" , \
 					"/" , "："]
 file_extension = str()
 file_url       = str()
-
+video_list = []
+videoName = []
 
 exist_file = os.listdir(store_location)
 for index,file_item in enumerate(file_list):
@@ -301,6 +309,7 @@ for index,file_item in enumerate(file_list):
 			result = res.get(file_url)
 			soup = BeautifulSoup(result.text, 'html.parser')
 			sourse_list = soup.find_all("source")
+			
 			for n in sourse_list:
 				name = n.get('id')
 				if name != None:
@@ -311,30 +320,11 @@ for index,file_item in enumerate(file_list):
 					if 'n' in select.lower():
 						continue
 					else:
-						video_url = "https://istream.ntut.edu.tw/videoplayer/" + n.get('src')
-						print(video_url , end = "\n\n")
-						with closing(res.get(video_url, stream=True )) as response:
-							#處理下載大小進度條
-							if response.headers.__contains__('content-length'):
-								file_size = response.headers['content-length']  
-							else:
-								file_size = 0;
-							chunk_size = 1024 # 單次請求最大值
-							content_size = int(file_size) # 內容體總大小
-							progress = ProgressBar(savename, total=content_size,
-															 unit="KB", chunk_size=chunk_size, run_status="正在下載", fin_status="下載完成")
-							with open(store_location + "\\" + savename,'wb') as file:
-								for data in response.iter_content(chunk_size=chunk_size):
-									file.write(data)
-									progress.refresh(count=len(data))
-							file.close()
-							progress.endPrint()
-		
-
-
+						video_list.append("https://istream.ntut.edu.tw/videoplayer/" + n.get('src'))
+						videoName.append(savename)
+						
+os.system('cls')
+downloadMain(video_list,videoName,store_location) #呼叫download.py 裡面的函數
 
 
 input("按任意建結束");
-
-
-
